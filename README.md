@@ -1,4 +1,2 @@
-# CPE-593-Final-Project
-
-
+# CPE-593-Final-Project: Student Database Program
 Journal Sources:
