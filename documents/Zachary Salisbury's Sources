@@ -1,1 +1,5 @@
+Some research papers I found relevant to our project. They mainly concern sorting all the people/employees/etc. into a BTree using an index. The depth of the BTree would obviously depend on the number of indexes put into the system.
 
+https://dzone.com/articles/database-btree-indexing-in-sqlite
+
+https://towardsdatascience.com/how-b-tree-indexes-are-built-in-a-database-6f847fb3cfcc
