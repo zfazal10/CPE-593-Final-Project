@@ -425,7 +425,7 @@ int main() {
 	t.traverse();
 	cout << endl;
 
-	t.remove({ 2, "Gia" });
+	t.remove({ 2, "Gill" });
 	cout << "Traversal of tree after removing 2\n";
 	t.traverse();
 	cout << endl;
