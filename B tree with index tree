@@ -819,7 +819,7 @@ void BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::remove(c
 	}
 
 	
-	//root->remove(k);
+	root->remove(k);
 	//cout << endl;
 	//cout << "Debug Traverse 1:" << endl;
 	//cout << endl;
