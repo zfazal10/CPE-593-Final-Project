@@ -3,11 +3,19 @@
 #include <cstring>
 #include <fstream>
 #include <sstream>
-#include<vector>
+#include <vector>
 
 using namespace std;
 template<typename Record, typename PrimaryKeyType, PrimaryKeyType Record::*PrimaryKey, typename IndexKeyType, IndexKeyType Record::*IndexKey>
 class Index_BTree;
+template<typename Record, typename PrimaryKeyType, PrimaryKeyType Record::*PrimaryKey, typename IndexKeyType, IndexKeyType Record::*IndexKey>
+class Index_BTreeNode;
+
+template<typename Record, typename PrimaryKeyType, PrimaryKeyType Record::*PrimaryKey, typename IndexKeyType, IndexKeyType Record::*IndexKey>
+struct location_in_IndexBTree {
+	Index_BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> * node;
+	int index;
+};
 
 struct student {
 	int ID;	
@@ -15,14 +23,14 @@ struct student {
 	string lastName;
 	string DOB;
 	string major;
-	//float GPA;
-	//TODO: Add more student info, then create file?
+	float GPA;
+	//TODO: Add more student info, more features using different info?
 	//friend istream& operator >>(istream& s, student& u) {
 		// read in a user from disk
 	//}
 
 };
-
+//TODO: make staff struct and directory?
 
 
 
@@ -38,7 +46,7 @@ class Index_BTreeNode
 public:
 	Index_BTreeNode(bool _leaf);
 	void traverse();
-	Index_BTreeNode *search(const IndexKeyType &k);
+	location_in_IndexBTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> search(const IndexKeyType &k);
 
 	int findKey(const IndexKeyType &k);
 
@@ -82,7 +90,7 @@ public:	//TODO: check that these still work	vv
 
 	void remove(const Record &k);
 	void insert(const Record &k);
-	Index_BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>* search(PrimaryKeyType k) {
+	location_in_IndexBTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> search(IndexKeyType k) { //TODO: change to &k?
 		return root->search(k);
 	}
 
@@ -366,24 +374,33 @@ void Index_BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>
 	for (i = 0; i < n; i++) {
 		if (leaf == false)
 			C[i]->traverse();
-		cout << " (" << (*keys[i]).*IndexKey << " , " << (*keys[i]).*PrimaryKey << ") ";// .ID << "," << keys[i].name << ")";
+		cout << " (" << (*keys[i]).*IndexKey << " , " << (*keys[i]).*PrimaryKey << " , " << keys[i] << ") ";// .ID << "," << keys[i].name << ")";
 	}
+	//cout << sizeof(Record) << endl; <- TODO: delete but it could help trouble shoot pointers
 
 	if (leaf == false)
 		C[i]->traverse();
 }
 template<typename Record, typename PrimaryKeyType, PrimaryKeyType Record::*PrimaryKey, typename IndexKeyType, IndexKeyType Record::*IndexKey>
-Index_BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> *Index_BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::search(const IndexKeyType &k) {
+location_in_IndexBTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> Index_BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::search(const IndexKeyType &k) {
 	int i = 0;
-	while (i < n && k > *keys[i].*PrimaryKey)
+	//cout << "N of i_treenode = " << n << endl;
+	while (i < n && k > *keys[i].*IndexKey)
 		i++;
-
-	if (*keys[i].*PrimaryKey == k)
-		return this;
-
-	if (leaf == true)
-		return NULL;
-
+	//cout << "k: " << k << endl;
+	//cout << "i: " << i << endl;
+	if (i < n) {
+		if (*keys[i].*IndexKey == k) {
+			//cout << "hint" << endl;
+			return { this, i };
+		}
+	}
+	//cout << 2 << endl;
+	if (leaf == true) {
+		//cout << "returning null" << endl;
+		return { NULL, NULL };
+	}
+	//cout << " about to search child for " << k << endl;
 	return C[i]->search(k);
 }
 template<typename Record, typename PrimaryKeyType, PrimaryKeyType Record::*PrimaryKey, typename IndexKeyType, IndexKeyType Record::*IndexKey>
@@ -421,8 +438,30 @@ void Index_BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::re
 //================================================================	End of Index Classes ===================================================================
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 template<typename Record, typename PrimaryKeyType, PrimaryKeyType Record::*PrimaryKey, typename IndexKeyType, IndexKeyType Record::*IndexKey>
 class BTree;
+template<typename Record, typename PrimaryKeyType, PrimaryKeyType Record::*PrimaryKey, typename IndexKeyType, IndexKeyType Record::*IndexKey>
+class BTreeNode;
+
+template<typename Record, typename PrimaryKeyType, PrimaryKeyType Record::*PrimaryKey, typename IndexKeyType, IndexKeyType Record::*IndexKey>
+struct location_in_BTree {
+	BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> * node;
+	int index;
+};
+
+
 
 template<typename Record, typename PrimaryKeyType, PrimaryKeyType Record::*PrimaryKey, typename IndexKeyType, IndexKeyType Record::*IndexKey>
 class BTreeNode
@@ -454,7 +493,7 @@ public:
 			if (leaf == false)
 				C[i]->traverse();
 			Record *ptr = &keys[i];
-			cout << " (" << keys[i].*PrimaryKey << "), ";
+			cout << " (" << keys[i].*PrimaryKey << " , " << keys[i].*IndexKey << " , " << ptr << "), ";
 			//cout << keys[i].ID << ", " << keys[i].firstName << ", " << keys[i].lastName << ", " << keys[i].DOB << ", " << keys[i].major << ", " << keys[i].GPA << endl;
 		}
 
@@ -462,11 +501,11 @@ public:
 			C[i]->traverse();
 	}
 
-	BTreeNode *search(const PrimaryKeyType &k);
+	location_in_BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> search(const PrimaryKeyType &k);
 
 	int findKey(const PrimaryKeyType &k);
 
-	void insertNonFull(const Record &k);
+	void insertNonFull(const Record &k, Index_BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> &i_tree);
 	void splitChild(int i, BTreeNode *y);
 
 	void remove(const Record &k);
@@ -491,6 +530,7 @@ class BTree
 	Index_BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>	i_tree;
 
 public:
+	
 	constexpr static uint32_t rec_per_block = (blocksize - 8) / (sizeof(Record) + 8);
 	constexpr static uint32_t min_rec_per_block = (rec_per_block + 1) / 2;
 	constexpr static uint32_t max_rec_per_block = min_rec_per_block * 2 - 1;
@@ -501,7 +541,7 @@ public:
 
 	void remove(const Record &k);
 	Record* insert(const Record &k);
-	BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>* search(PrimaryKeyType k) {
+	location_in_BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> search(PrimaryKeyType k) {
 		return root->search(k);
 	}
 
@@ -509,9 +549,9 @@ public:
 		root->traverse();
 		cout << endl;
 		cout << endl;
-		//i_tree.traverse();
-		//cout << endl;
-		//cout << endl;
+		i_tree.traverse();
+		cout << endl;
+		cout << endl;
 	}
 
 	void sync() {
@@ -713,10 +753,9 @@ void BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::merg
 }
 template<typename Record, typename PrimaryKeyType, PrimaryKeyType Record::*PrimaryKey, typename IndexKeyType, IndexKeyType Record::*IndexKey>
 Record* BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::insert(const Record &k) {	//TODO: make void?
-
+	
 	if (root->n == 0) {
 		//cout << "empty" << endl;
-
 		root->keys[0] = k;
 		root->n = 1;
 		//Record* ptr = &(root->keys[0]);
@@ -732,29 +771,41 @@ Record* BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::inser
 			int i = 0;
 			if (s->keys[0].*PrimaryKey < k.*PrimaryKey)
 				i++;
-			s->C[i]->insertNonFull(k);
+			s->C[i]->insertNonFull(k, i_tree);
 			root = s;
 		}
 		else {
 			//cout << "not full" << endl;
-			root->insertNonFull(k);
+			root->insertNonFull(k, i_tree);
 		}
 	}
+
 	Record* ptr = &(root->keys[root->n - 1]);
-	//cout << k.name << " @ " << ptr << " In Primary Tree." << endl;
+	//cout << k.firstName << " @ " << ptr << " In Primary Tree." << endl;
 	i_tree.insert(*ptr);
 	return ptr;
 }
 template<typename Record, typename PrimaryKeyType, PrimaryKeyType Record::*PrimaryKey, typename IndexKeyType, IndexKeyType Record::*IndexKey>
-void BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::insertNonFull(const Record &k) {
-
+void BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::insertNonFull(const Record &k, Index_BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> &i_tree) {
+	cout << endl << "n = " << n << endl;
 	int i = n - 1;
 	if (leaf == true) {
-		while (i >= 0 && keys[i].*PrimaryKey > k.*PrimaryKey) {
+		while (i >= 0 && keys[i].*PrimaryKey > k.*PrimaryKey) { //TODO: analyze complexity for report logn^2?
+			//swap these pointers in i_tree keys** (array of pointers)
+			//if (i < n - 1) {
+				
+				Record *new_location = &keys[i + 1];
+				Record *og_location = &keys[i];
+				//location_in_IndexBTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> i_plus_1 = i_tree.search(keys[i + 1].*IndexKey);
+				//location_in_IndexBTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> i = i_tree.search(keys[i].*IndexKey);
+				//Index_BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> test = *i_plus_1.node;
+				//cout << *(i_plus_1.node).keys[i_plus_1.index] << endl;
+			
+				
+			//}
 			keys[i + 1] = keys[i];
 			i--;
 		}
-
 		keys[i + 1] = k;
 		n = n + 1;
 	}
@@ -764,15 +815,16 @@ void BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::inse
 
 		if (C[i + 1]->n == BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::max_rec_per_block) {
 			splitChild(i + 1, C[i + 1]);
-
 			if (keys[i + 1].*PrimaryKey < k.*PrimaryKey)
 				i++;
 		}
-		C[i + 1]->insertNonFull(k);
+		
+		C[i + 1]->insertNonFull(k, i_tree);
 	}
 }
 template<typename Record, typename PrimaryKeyType, PrimaryKeyType Record::*PrimaryKey, typename IndexKeyType, IndexKeyType Record::*IndexKey>
 void BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::splitChild(int i, BTreeNode *y) {
+	cout << endl << "SHIT================================================" << endl;
 	BTreeNode *z = new BTreeNode(y->leaf);
 	z->n = BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::min_rec_per_block - 1;
 
@@ -798,16 +850,17 @@ void BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::spli
 }
 
 template<typename Record, typename PrimaryKeyType, PrimaryKeyType Record::*PrimaryKey, typename IndexKeyType, IndexKeyType Record::*IndexKey>
-BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> *BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::search(const PrimaryKeyType &k) {
+location_in_BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::search(const PrimaryKeyType &k) {
+	
 	int i = 0;
 	while (i < n && k > keys[i].*PrimaryKey)
 		i++;
 
 	if (keys[i].*PrimaryKey == k)
-		return this;
+		return { this, i };
 
 	if (leaf == true)
-		return NULL;	
+		return { NULL, NULL };
 
 	return C[i]->search(k);
 }
@@ -825,7 +878,7 @@ void BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::remove(c
 	//cout << endl;
 	//i_tree.traverse();
 	//cout << endl;
-	//Record *ptr = const_cast<Record*>(&k);
+	Record *ptr = const_cast<Record*>(&k);
 	//i_tree.remove(*ptr);
 	//cout << endl;
 	//cout << "Debug Traverse 2:" << endl;
@@ -854,48 +907,59 @@ void BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::remove(c
 //================================================================	Beginning of main function ===================================================================
 //================================================================	Beginning of main function ===================================================================
 
+
+
+
+
+
+
+
+
+
 int main() {
-	//BTree<student, int, &student::ID, string, &student::lastName> t;
-	BTree<student, string, &student::firstName, string, &student::lastName> t;
-	
-	
-	
+	BTree<student, int, &student::ID, string, &student::firstName> t;
+	//BTree<student, string, &student::firstName, string, &student::lastName> t;
+	int count = 0;
 	ifstream myCSV("Student Database Data Table.csv");
 	string line;	
 	while (getline(myCSV, line, '\n')) {
-		vector<string> result;
-		stringstream s_stream(line); //create string stream from the string
-		while (s_stream.good()) {
-			string substr;
-			getline(s_stream, substr, ','); //get first string delimited by comma
-			result.push_back(substr);
+		if (line != "First Name,Last Name,ID,Birthdate,Major,GPA") {
+			count++;
+			vector<string> result;
+			stringstream s_stream(line); //create string stream from the string
+			while (s_stream.good()) {
+				string substr;
+				getline(s_stream, substr, ','); //get first string delimited by comma
+				result.push_back(substr);
+			}
+
+			string FN = result.at(0);
+			string LN = result.at(1);
+			string ID_str = result.at(2);
+			stringstream to_int(ID_str);
+			int ID = 0;
+			to_int >> ID;
+			string DOB = result.at(3);
+			string Major = result.at(4);
+			string GPA_str = result.at(5);
+			float GPA = stof(GPA_str);
+			cout << endl << count << endl;
+			t.insert({ ID, FN, LN, DOB, Major, GPA });
+			cout << count << ": Inserted: " << ID << " , " << FN << endl;
+			t.traverse();		//	<--POINTER ANALYSIS
 		}
-
-		string FN = result.at(0);
-		string LN = result.at(1);
-		string ID_str = result.at(2);
-		stringstream geek(ID_str);
-		int ID = 0;
-		geek >> ID;
-		string DOB = result.at(3);
-		string Major = result.at(4);
-		string GPA_str = result.at(5);
-		stringstream to_float(GPA_str);
-		float GPA = 0.0;
-		geek >> GPA;
-
-		if (FN != "First Name")
-			t.insert({ ID, FN, LN, DOB, Major});
 	}
 
-
-	t.traverse();
+	//HAVE FUNCTION RETURN INDEX BTREE IF YOU WANT TO MANIPULATE FROM MAIN, maybe on insert if it was empty, check efficiency
+	//location_in_BTree<student, int, &student::ID, string, &student::firstName> test = t.search(1026);
+	//cout << test.node << endl;
+	//cout << test.index << endl;
 	
-	//t.remove({ 1026 , "Philip", "Gibson", "6/5/2001", "Biology"});
-	//cout << "removed Philip Gibson (1026)" << endl;
-	//t.traverse();
+	//t.remove({1026, "Philip", "Gibson", "6/5/2001", "Biology", 2.627});
+	//cout << "removed Philip Giboson (1026)" << endl;
+//	t.traverse();
 
-
+	
 
 
 #if 0
