@@ -35,15 +35,18 @@ struct student {
 
 
 
+
+
 template<typename Record, typename PrimaryKeyType, PrimaryKeyType Record::*PrimaryKey, typename IndexKeyType, IndexKeyType Record::*IndexKey>
 class Index_BTreeNode
 {
 
 	Index_BTreeNode **C; // An array of child pointers
-	int n;     // Current number of keys
+	
 	bool leaf; // Is true when node is leaf. Otherwise false
 
 public:
+	int n;     // Current number of keys
 	Record **keys;  // An array of keys
 	Index_BTreeNode(bool _leaf);
 	void traverse();
@@ -74,7 +77,7 @@ inline void addMeIn(Record &k, Index_BTreeNode<Record, PrimaryKeyType, PrimaryKe
 //TODO: delete function
 
 
-constexpr uint32_t blocksize = 1024; //<- windows 10 block size	//TODO: get ride of this line?
+constexpr uint32_t blocksize = 1024; //<- should be 1024 on linux, 4096 on windows 10
 template<typename Record, typename PrimaryKeyType, PrimaryKeyType Record::*PrimaryKey, typename IndexKeyType, IndexKeyType Record::*IndexKey>
 class Index_BTree
 {
@@ -122,20 +125,24 @@ void Index_BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>
 {
 	Record *x = const_cast<Record*> (&k);
 	int idx = findKey(*x.*IndexKey);
-	cout << "index(tree_i) is: " << idx << ", n = " << n << ", *keys[idx].*IndexKey = " << *keys[idx].*IndexKey << ", *x.*IndexKey = " << *x.*IndexKey << endl;
+	//if (*x.*IndexKey == "Leona")	return;
+	//cout << "IIIIII index(tree_i) is: " << idx << ", n = " << n << ", *keys[idx].*IndexKey = " << *keys[idx].*IndexKey << ", *x.*IndexKey = " << *x.*IndexKey << endl;
 	if (idx < n && *keys[idx].*IndexKey == *x.*IndexKey) {
-		cout << "Index triggered" << endl;
-		if (leaf)
+		if (leaf) {
 			removeFromLeaf(idx);
-		else
+			cout << "IIIIII REMOVED FROM LEAF" << endl;
+		}
+		else {
 			removeFromNonLeaf(idx);
+			cout << "IIIIII REMOVED FROM NON LEAF" << endl;
+		}
 	}
 	else {
 		if (leaf) {
-			cout << "The key does not exist in the tree\n";
+			cout << "IIII The key does not exist in the tree\n";
 			return;
 		}
-
+		cout << "IIIIII GUAC?" << endl;
 		bool flag = ((idx == n) ? true : false);
 
 		if (C[idx]->n < Index_BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::min_rec_per_block)
@@ -153,9 +160,15 @@ void Index_BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>
 
 template<typename Record, typename PrimaryKeyType, PrimaryKeyType Record::*PrimaryKey, typename IndexKeyType, IndexKeyType Record::*IndexKey>
 void Index_BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::removeFromLeaf(int idx) {
-	for (int i = idx + 1; i < n; ++i)
+	cout << "n = " << n << endl;
+	cout << "idx = " << idx << endl;
+	for (int i = idx + 1; i < n; ++i) {
+		//cout << *keys[i - 1].*IndexKey << " <- " << *keys[i].*IndexKey << "(" << i << ")" << " Next next is: " << *keys[i+2].*IndexKey << endl;
 		keys[i - 1] = keys[i];
+	}
 	n--;
+	Record **here = &keys[0];
+	cout << "WE DECREASED N to " << n << ", for i btree node: " << here << ", the minimum is: " << Index_BTree< Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>:: min_rec_per_block << endl;
 	return;
 }
 template<typename Record, typename PrimaryKeyType, PrimaryKeyType Record::*PrimaryKey, typename IndexKeyType, IndexKeyType Record::*IndexKey>
@@ -167,6 +180,7 @@ void Index_BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>
 		const Record& pred = getPred(idx);
 		Record *x = const_cast<Record*> (&pred);
 		keys[idx] = x;
+		cout << "IIIIII GOTTA REMOVE PRED" << endl;
 		C[idx]->remove(pred);
 	}
 
@@ -174,11 +188,13 @@ void Index_BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>
 		const Record& succ = getSucc(idx);
 		Record *x = const_cast<Record*> (&succ);
 		keys[idx] = x;
+		cout << "IIIIII GOTTA REMOVE SUCC" << endl;
 		C[idx + 1]->remove(succ);
 	}
 
 	else {
 		merge(idx);
+		cout << "IIIIII MERGED" << endl;
 		C[idx]->remove(k);
 	}
 	return;
@@ -374,18 +390,19 @@ void Index_BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>
 	int i;
 	for (i = 0; i < n; i++) {
 		if (leaf == false) {
-			cout << endl << "This node has n = " << C[i]->n << endl;
+			Record **that = &C[i]->keys[0];
+			//cout << endl << "III This node has n = " << C[i]->n << " and adddress: " << that << endl;
 			C[i]->traverse();
-			cout << endl << "END OF THIS NODE WITH n = " << C[i]->n << endl;
+			//cout << endl << "III END OF THIS NODE WITH n = " << C[i]->n << endl;
 		}
 		cout << " (" << i << " , " << (*keys[i]).*IndexKey << " , " << (*keys[i]).*PrimaryKey << " , " << keys[i] << ") ";// .ID << "," << keys[i].name << ")";
 	}
 	//cout << sizeof(Record) << endl; <- TODO: delete but it could help trouble shoot pointers
 
 	if (leaf == false) {
-		cout << endl << "This node has n = " << C[i]->n << endl;
+		//cout << endl << "This node has n = " << C[i]->n << endl;
 		C[i]->traverse();
-		cout << endl << "END OF THIS NODE WITH n = " << C[i]->n << endl;
+		//cout << endl << "END OF THIS NODE WITH n = " << C[i]->n << endl;
 	}
 }
 template<typename Record, typename PrimaryKeyType, PrimaryKeyType Record::*PrimaryKey, typename IndexKeyType, IndexKeyType Record::*IndexKey>
@@ -480,7 +497,7 @@ class BTreeNode
 
 public:
 	BTreeNode(bool _leaf);
-
+	//TODO: get rid of sync
 	void sync(Index_BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> &i_tree) {
 		int i;
 		for (i = 0; i < n; i++) {
@@ -498,9 +515,9 @@ public:
 		int i;
 		for (i = 0; i < n; i++) {
 			if (leaf == false) {
-				cout << endl << "This node has n = " << C[i]->n << endl;
+				//cout << endl << "This node has n = " << C[i]->n << endl;
 				C[i]->traverse();
-				cout << endl << "END OF THIS NODE WITH n = " << C[i]->n << endl;
+				//cout << endl << "END OF THIS NODE WITH n = " << C[i]->n << endl;
 			}
 			Record *ptr = &keys[i];
 			cout << " (" << i << " , " << keys[i].*PrimaryKey << " , " << keys[i].*IndexKey << " , " << ptr << "), ";
@@ -508,9 +525,9 @@ public:
 		}
 
 		if (leaf == false) {
-			cout << endl << "This node has n = " << C[i]->n << endl;
+			//cout << endl << "This node has n = " << C[i]->n << endl;
 			C[i]->traverse();
-			cout << endl << "END OF THIS NODE WITH n = " << C[i]->n << endl;
+			//cout << endl << "END OF THIS NODE WITH n = " << C[i]->n << endl;
 		}
 	}
 
@@ -521,21 +538,20 @@ public:
 	void insertNonFull(const Record &k, Index_BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> &i_tree);
 	void splitChild(int i, BTreeNode *y, Index_BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> &i_tree);
 
-	void remove(const Record &k);
-	void removeFromLeaf(int idx);
-	void removeFromNonLeaf(int idx);
+	void remove(const Record &k, Index_BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> &i_tree);
+	void removeFromLeaf(int idx, Index_BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> &i_tree);
+	void removeFromNonLeaf(int idx, Index_BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> &i_tree);
 	const Record& getPred(int idx);
 	const Record& getSucc(int idx);
-	void fill(int idx);
-	void borrowFromPrev(int idx);
-	void borrowFromNext(int idx);
-	void merge(int idx);
+	void fill(int idx, Index_BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> &i_tree);
+	void borrowFromPrev(int idx, Index_BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> &i_tree);
+	void borrowFromNext(int idx, Index_BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> &i_tree);
+	void merge(int idx, Index_BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> &i_tree);
 
 
-	friend BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>;		//maybe move inside BTree
+	friend BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>;
 };
 
-//constexpr uint32_t blocksize = 4096; //<- windows 10 block size	
 template<typename Record, typename PrimaryKeyType, PrimaryKeyType Record::*PrimaryKey, typename IndexKeyType, IndexKeyType Record::*IndexKey>
 class BTree
 {
@@ -599,16 +615,21 @@ int BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::findK
 }
 
 template<typename Record, typename PrimaryKeyType, PrimaryKeyType Record::*PrimaryKey, typename IndexKeyType, IndexKeyType Record::*IndexKey>
-void BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::remove(const Record &k)
+void BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::remove(const Record &k, Index_BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> &i_tree)
 {
+	cout << "about to findkey for: " << k.*PrimaryKey << " , " << k.*IndexKey << endl;
 	int idx = findKey(k.*PrimaryKey);
 
 	if (idx < n && keys[idx].*PrimaryKey == k.*PrimaryKey) {
-		cout << "triggered, index = " << idx << endl;
-		if (leaf)
-			removeFromLeaf(idx);
-		else
-			removeFromNonLeaf(idx);
+		//cout << "triggered, index = " << idx << endl;
+		if (leaf) {
+			cout << "REMOVE FROM LEAF" << endl;
+			removeFromLeaf(idx, i_tree);
+		}
+		else {
+			cout << "REMOVE FROM NON LEAF" << endl;
+			removeFromNonLeaf(idx, i_tree);
+		}
 	}
 	else {
 		if (leaf) {
@@ -618,46 +639,96 @@ void BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::remo
 
 		bool flag = ((idx == n) ? true : false);
 
-		if (C[idx]->n < BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::min_rec_per_block) //TODO: do we need class?
-			fill(idx);
+		if (C[idx]->n < BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::min_rec_per_block) {
+			fill(idx, i_tree);
+			cout << "FILLED" << endl;
+		}
 		if (flag && idx > n)
-			C[idx - 1]->remove(k);
+			C[idx - 1]->remove(k, i_tree);
 		else
-			C[idx]->remove(k);
+			C[idx]->remove(k, i_tree);
 	}
 	return;
 }
 
 template<typename Record, typename PrimaryKeyType, PrimaryKeyType Record::*PrimaryKey, typename IndexKeyType, IndexKeyType Record::*IndexKey>
-void BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::removeFromLeaf(int idx) {
-	for (int i = idx + 1; i < n; ++i)
+void BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::removeFromLeaf(int idx, Index_BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> &i_tree) {
+	int i = idx + 1;
+	//Record *should = &keys[idx];
+	//cout << "We should be deleting: " << keys[idx].*PrimaryKey << " , " << keys[idx].*IndexKey << " ,located at: " << should << endl;
+	//cout << "n = " << n << " , idx = " << idx << endl;
+	for (i = idx + 1; i < n; ++i) {
+
+		location_in_IndexBTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> i_tree_key_loc = i_tree.search(keys[i].*IndexKey);
+		if (i_tree_key_loc.node != nullptr) {
+			Index_BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> i_node = *i_tree_key_loc.node;
+			i_node.keys[i_tree_key_loc.index] = &keys[i - 1];
+		}
+		
+		//cout << "loop" << endl;
 		keys[i - 1] = keys[i];
+	}
+
+	//Record *keep = &keys[i - 1];
+	//Record *remove = &keys[i];
+	//cout << "We want to keep: " << keys[i - 1].*PrimaryKey << " , " << keys[i - 1].*IndexKey << " ,located at: " << keep << endl;
+	//cout << "We want to delete: " << keys[i].*PrimaryKey << " , " << keys[i].*IndexKey << " ,located at: " << remove << endl;
+
+	//i_tree.remove(keys[i - 1]);
 	n--;
+
+
+	
 	return;
 }
+
 template<typename Record, typename PrimaryKeyType, PrimaryKeyType Record::*PrimaryKey, typename IndexKeyType, IndexKeyType Record::*IndexKey>
-void BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::removeFromNonLeaf(int idx) {
-	const Record& k = keys[idx];
+void BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::removeFromNonLeaf(int idx, Index_BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> &i_tree) {
+	const Record k = keys[idx];
 	if (C[idx]->n >= BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::min_rec_per_block) {
 		const Record& pred = getPred(idx);
-		keys[idx] = pred;
-		C[idx]->remove(pred);
+
+		location_in_IndexBTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> i_tree_key_loc = i_tree.search(pred.*IndexKey);
+		if (i_tree_key_loc.node != nullptr) {
+			Index_BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> i_node = *i_tree_key_loc.node;
+			i_node.keys[i_tree_key_loc.index] = &keys[idx];
+		}
+		
+
+
+		keys[idx] = pred;		//key change!
+		cout << "Removing pred" << endl;
+		C[idx]->remove(pred, i_tree);
 	}
 
 	else if (C[idx + 1]->n >= BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::min_rec_per_block) {
 		const Record& succ = getSucc(idx);
-		keys[idx] = succ;
-		C[idx + 1]->remove(succ);
+
+
+		location_in_IndexBTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> i_tree_key_loc = i_tree.search(succ.*IndexKey);		//will probably have to const cast succ
+		if (i_tree_key_loc.node != nullptr) {
+			Index_BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> i_node = *i_tree_key_loc.node;
+			i_node.keys[i_tree_key_loc.index] = &keys[idx];
+		}
+		
+
+		keys[idx] = succ;	//key change!
+		cout << "Removing succ" << endl;
+		C[idx + 1]->remove(succ, i_tree);
 	}
 
 	else {
-		merge(idx);
-		C[idx]->remove(k);
+		cout << "about to remove: " << k.*PrimaryKey << " , " << k.*IndexKey << endl;
+		merge(idx, i_tree);
+		cout << "Merged" << endl;
+		cout << "about to remove: " << k.*PrimaryKey << " , " << k.*IndexKey << endl;
+		C[idx]->remove(k, i_tree);
 	}
 	return;
 }
 template<typename Record, typename PrimaryKeyType, PrimaryKeyType Record::*PrimaryKey, typename IndexKeyType, IndexKeyType Record::*IndexKey>
 const Record& BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::getPred(int idx) {
+	cout << "getpred" << endl;
 	BTreeNode *cur = C[idx];
 	while (!cur->leaf)
 		cur = cur->C[cur->n];
@@ -666,7 +737,7 @@ const Record& BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexK
 }
 template<typename Record, typename PrimaryKeyType, PrimaryKeyType Record::*PrimaryKey, typename IndexKeyType, IndexKeyType Record::*IndexKey>
 const Record& BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::getSucc(int idx) {
-
+	cout << "getsucc" << endl;
 	BTreeNode *cur = C[idx + 1];
 	while (!cur->leaf)
 		cur = cur->C[0];
@@ -674,39 +745,64 @@ const Record& BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexK
 	return cur->keys[0];
 }
 template<typename Record, typename PrimaryKeyType, PrimaryKeyType Record::*PrimaryKey, typename IndexKeyType, IndexKeyType Record::*IndexKey>
-void BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::fill(int idx) {
-
+void BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::fill(int idx, Index_BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> &i_tree) {
+	cout << "filling" << endl;
 	if (idx != 0 && C[idx - 1]->n >= BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::min_rec_per_block)
-		borrowFromPrev(idx);
+		borrowFromPrev(idx, i_tree);
 
 	else if (idx != n && C[idx + 1]->n >= BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::min_rec_per_block)
-		borrowFromNext(idx);
+		borrowFromNext(idx, i_tree);
 
 	else {
 		if (idx != n)
-			merge(idx);
+			merge(idx, i_tree);
 		else
-			merge(idx - 1);
+			merge(idx - 1, i_tree);
 	}
 	return;
 }
 template<typename Record, typename PrimaryKeyType, PrimaryKeyType Record::*PrimaryKey, typename IndexKeyType, IndexKeyType Record::*IndexKey>
-void BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::borrowFromPrev(int idx) {
+void BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::borrowFromPrev(int idx, Index_BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> &i_tree) {
+	cout << "Borrowingfromprev" << endl;
 	BTreeNode *child = C[idx];
 	BTreeNode *sibling = C[idx - 1];
 
-	for (int i = child->n - 1; i >= 0; --i)
+	for (int i = child->n - 1; i >= 0; --i) {
+	
+		location_in_IndexBTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> i_tree_key_loc = i_tree.search(child->keys[i].*IndexKey);
+		if (i_tree_key_loc.node != nullptr) {
+			Index_BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> i_node = *i_tree_key_loc.node;
+			i_node.keys[i_tree_key_loc.index] = &(child->keys[i + 1]);
+		}
+		else {
+			cout << "I should see this at 79" << endl;
+		}		
+		
 		child->keys[i + 1] = child->keys[i];
+	}
 
 	if (!child->leaf) {
 		for (int i = child->n; i >= 0; --i)
 			child->C[i + 1] = child->C[i];
 	}
 
+
+	location_in_IndexBTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> i_tree_key_loc = i_tree.search(keys[idx - 1].*IndexKey);
+	if (i_tree_key_loc.node != nullptr) {
+		Index_BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> i_node = *i_tree_key_loc.node;
+		i_node.keys[i_tree_key_loc.index] = &(child->keys[0]);
+	}
+
 	child->keys[0] = keys[idx - 1];
 
 	if (!child->leaf)
 		child->C[0] = sibling->C[sibling->n];
+
+	i_tree_key_loc = i_tree.search(sibling->keys[sibling->n - 1].*IndexKey);
+	if (i_tree_key_loc.node != nullptr) {
+		Index_BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> i_node = *i_tree_key_loc.node;
+		i_node.keys[i_tree_key_loc.index] = &(keys[idx - 1]);
+	}
 
 	keys[idx - 1] = sibling->keys[sibling->n - 1];
 
@@ -716,19 +812,39 @@ void BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::borr
 	return;
 }
 template<typename Record, typename PrimaryKeyType, PrimaryKeyType Record::*PrimaryKey, typename IndexKeyType, IndexKeyType Record::*IndexKey>
-void BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::borrowFromNext(int idx) {
+void BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::borrowFromNext(int idx, Index_BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> &i_tree) {
+	cout << "Borrowingfromnext" << endl;
 	BTreeNode *child = C[idx];
 	BTreeNode *sibling = C[idx + 1];
+
+	location_in_IndexBTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> i_tree_key_loc = i_tree.search(keys[idx].*IndexKey);
+	if (i_tree_key_loc.node != nullptr) {
+		Index_BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> i_node = *i_tree_key_loc.node;
+		i_node.keys[i_tree_key_loc.index] = &(child->keys[(child->n)]);
+	}
 
 	child->keys[(child->n)] = keys[idx];
 
 	if (!(child->leaf))
 		child->C[(child->n) + 1] = sibling->C[0];
 
+	i_tree_key_loc = i_tree.search(sibling->keys[0].*IndexKey);
+	if (i_tree_key_loc.node != nullptr) {
+		Index_BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> i_node = *i_tree_key_loc.node;
+		i_node.keys[i_tree_key_loc.index] = &(keys[idx]);
+	}
+
 	keys[idx] = sibling->keys[0];
 
-	for (int i = 1; i < sibling->n; ++i)
+	for (int i = 1; i < sibling->n; ++i) {
+		i_tree_key_loc = i_tree.search(sibling->keys[i].*IndexKey);
+		if (i_tree_key_loc.node != nullptr) {
+			Index_BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> i_node = *i_tree_key_loc.node;
+			i_node.keys[i_tree_key_loc.index] = &(sibling->keys[i - 1]);
+		}
+
 		sibling->keys[i - 1] = sibling->keys[i];
+	}
 
 	if (!sibling->leaf) {
 		for (int i = 1; i <= sibling->n; ++i)
@@ -740,28 +856,60 @@ void BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::borr
 	return;
 }
 template<typename Record, typename PrimaryKeyType, PrimaryKeyType Record::*PrimaryKey, typename IndexKeyType, IndexKeyType Record::*IndexKey>
-void BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::merge(int idx) {
+void BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::merge(int idx, Index_BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> &i_tree) {
+	cout << "MERGING" << endl;
 	BTreeNode *child = C[idx];
 	BTreeNode *sibling = C[idx + 1];
+	int minRec = BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::min_rec_per_block;
+	cout << "About to search for: " << keys[idx].*IndexKey << endl;
+	
+	location_in_IndexBTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> i_tree_key_loc = i_tree.search(keys[idx].*IndexKey);
+	if (i_tree_key_loc.node != nullptr) {
+		Index_BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> i_node = *i_tree_key_loc.node;
+		i_node.keys[i_tree_key_loc.index] = &(child->keys[minRec - 1]);
+	}
+	else {
+		cout << "I should see this at 86" << endl;
+	}
 
-	child->keys[BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::min_rec_per_block - 1] = keys[idx];
-	for (int i = 0; i < sibling->n; ++i)
-		child->keys[i + BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::min_rec_per_block] = sibling->keys[i];
+	child->keys[minRec - 1] = keys[idx];		//key change
+
+	for (int i = 0; i < sibling->n; ++i) {
+		cout << "Now About to search for: " << sibling->keys[i].*IndexKey  << endl;
+		location_in_IndexBTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> i_tree_key_loc = i_tree.search(sibling->keys[i].*IndexKey);
+		if (i_tree_key_loc.node != nullptr) {
+			Index_BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>i_node = *i_tree_key_loc.node;
+			i_node.keys[i_tree_key_loc.index] = &(child->keys[i + minRec]);
+		}
+		else {
+			cout << "I should see this at 67" << endl;
+		}
+
+		
+		child->keys[i + minRec] = sibling->keys[i];		//key change
+	}
 
 	if (!child->leaf) {
 		for (int i = 0; i <= sibling->n; ++i)
-			child->C[i + BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::min_rec_per_block] = sibling->C[i];
+			child->C[i + minRec] = sibling->C[i];
 	}
 
-	for (int i = idx + 1; i < n; ++i)
-		keys[i - 1] = keys[i];
+	for (int i = idx + 1; i < n; ++i) {
+		location_in_IndexBTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> i_tree_key_loc = i_tree.search(keys[i].*IndexKey);
+		if (i_tree_key_loc.node != nullptr) {
+			Index_BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> i_node = *i_tree_key_loc.node;
+			i_node.keys[i_tree_key_loc.index] = &(keys[i - 1]);
+		}
+		
+		keys[i - 1] = keys[i];		//key change
+	}
 
 	for (int i = idx + 2; i <= n; ++i)
 		C[i - 1] = C[i];
 
 	child->n += sibling->n + 1;
 	n--;
-	delete(sibling);
+	delete(sibling); //TODO-> does this affect the pointers? idts, i hope not
 	return;
 }
 template<typename Record, typename PrimaryKeyType, PrimaryKeyType Record::*PrimaryKey, typename IndexKeyType, IndexKeyType Record::*IndexKey>
@@ -779,7 +927,7 @@ Record* BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::inser
 
 	else {
 		if (root->n == max_rec_per_block) {
-			cout << "full" << endl;
+			//cout << "full" << endl;
 			BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>*s = new BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>(false);
 			s->C[0] = root;
 			s->splitChild(0, root, i_tree);
@@ -804,16 +952,13 @@ Record* BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::inser
 }
 template<typename Record, typename PrimaryKeyType, PrimaryKeyType Record::*PrimaryKey, typename IndexKeyType, IndexKeyType Record::*IndexKey>
 void BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::insertNonFull(const Record &k, Index_BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> &i_tree) {
-	cout << endl << "n = " << n << endl;
 	int i = n - 1;
 	if (leaf == true) {
 
 		while (i >= 0 && keys[i].*PrimaryKey > k.*PrimaryKey) { //TODO: analyze complexity for report logn^2?
 			//swap these pointers in i_tree keys** (array of pointers)
-			cout << "keys[i + 1]: " << keys[i + 1].*PrimaryKey << " , " << keys[i + 1].*IndexKey << endl;
-			cout << "keys[i]: " << keys[i].*PrimaryKey << " , " << keys[i].*IndexKey << endl;
-			//Record *new_location = &keys[i + 1];
-			//Record *og_location = &keys[i];
+			//cout << "keys[i + 1]: " << keys[i + 1].*PrimaryKey << " , " << keys[i + 1].*IndexKey << endl;
+			//cout << "keys[i]: " << keys[i].*PrimaryKey << " , " << keys[i].*IndexKey << endl;
 			//cout << "BEFORE SEARCH" << endl;
 			location_in_IndexBTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> i_tree_key_loc = i_tree.search(keys[i].*IndexKey);
 			//cout << "AFTER SEARCH" << endl;
@@ -849,12 +994,9 @@ void BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::inse
 }
 template<typename Record, typename PrimaryKeyType, PrimaryKeyType Record::*PrimaryKey, typename IndexKeyType, IndexKeyType Record::*IndexKey>
 void BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::splitChild(int i, BTreeNode *y, Index_BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> &i_tree) {
-	cout << endl << "SHIT================================================" << endl;
 	int minRecs = BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::min_rec_per_block;
 	BTreeNode *z = new BTreeNode(y->leaf);
 	z->n = BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::min_rec_per_block - 1;
-
-	//look at the 2 spots where keys are changing, does pointer changes affect shit? you got this, stay focused and grind.
 
 	for (int j = 0; j < BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::min_rec_per_block - 1; j++) {
 		location_in_IndexBTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> i_tree_key_loc = i_tree.search(y->keys[j + minRecs].*IndexKey);
@@ -865,28 +1007,18 @@ void BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::spli
 	}
 
 	if (y->leaf == false) {
-		for (int j = 0; j < BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::min_rec_per_block; j++) {
-			cout << "CASE 1 =============================================================" << endl;
-			//system("pause");
+		for (int j = 0; j < BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::min_rec_per_block; j++)
 			z->C[j] = y->C[j + BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::min_rec_per_block];
-			//TODO: does this ever happen? does this change the pointer value of keys in these children? test with smaller block size
-		}
+
 	}
 	y->n = BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::min_rec_per_block - 1;
 
-	for (int j = n; j >= i + 1; j--) {
-		cout << "CASE 2 =============================================================" << endl;
-		//system("pause");
-		C[j + 1] = C[j]; //above comment applies here to**	
-	}
+	for (int j = n; j >= i + 1; j--)
+		C[j + 1] = C[j];
 
-	C[i + 1] = z; //actualy i think we are good because these are just pointers*** test it out tho
+	C[i + 1] = z;
 
 	for (int j = n - 1; j >= i; j--) {
-		cout << "NEW CASE HERE =============================================================" << endl;
-		cout << "NEW CASE HERE =============================================================" << endl;
-		cout << "NEW CASE HERE =============================================================" << endl;
-		//system("pause");
 		location_in_IndexBTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> i_tree_key_loc = i_tree.search(keys[j].*IndexKey);
 		Index_BTreeNode<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> i_node = *i_tree_key_loc.node;
 		i_node.keys[i_tree_key_loc.index] = &keys[j + 1];
@@ -922,22 +1054,10 @@ void BTree<Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey>::remove(c
 	if (root->n == 0) {
 		cout << "The tree is empty\n";
 		return;
-	}
+	}	
 
-	
-	root->remove(k);
-	//cout << endl;
-	//cout << "Debug Traverse 1:" << endl;
-	//cout << endl;
-	//i_tree.traverse();
-	//cout << endl;
-	Record *ptr = const_cast<Record*>(&k);
-	//i_tree.remove(*ptr);
-	//cout << endl;
-	//cout << "Debug Traverse 2:" << endl;
-	//cout << endl;
-	//i_tree.traverse();
-	//cout << endl;
+	i_tree.remove(k);
+	root->remove(k, i_tree);
 
 	if (root->n == 0) {
 		BTreeNode <Record, PrimaryKeyType, PrimaryKey, IndexKeyType, IndexKey> *tmp = root;
@@ -996,158 +1116,56 @@ int main() {
 			string Major = result.at(4);
 			string GPA_str = result.at(5);
 			float GPA = stof(GPA_str);
-			cout << endl << count << endl;
+			//cout << endl << count << endl;
 			t.insert({ ID, FN, LN, DOB, Major, GPA });
-			cout << count << ": Inserted: " << ID << " , " << FN << endl;
+			//cout << count << ": Inserted: " << ID << " , " << FN << endl;
+			//t.traverse();		//	<--POINTER ANALYSIS
+		}
+	}
+	t.traverse();
+
+	ifstream myCSV2("Student Database Data Table.csv");
+	while (getline(myCSV2, line, '\n')) {
+		if (line != "First Name,Last Name,ID,Birthdate,Major,GPA") {
+			count--;
+			vector<string> result;
+			stringstream s_stream(line); //create string stream from the string
+			while (s_stream.good()) {
+				string substr;
+				getline(s_stream, substr, ','); //get first string delimited by comma
+				result.push_back(substr);
+			}
+
+			string FN = result.at(0);
+			string LN = result.at(1);
+			string ID_str = result.at(2);
+			stringstream to_int(ID_str);
+			int ID = 0;
+			to_int >> ID;
+			string DOB = result.at(3);
+			string Major = result.at(4);
+			string GPA_str = result.at(5);
+			float GPA = stof(GPA_str);
+			//cout << endl << count << endl;
+			t.remove({ ID, FN, LN, DOB, Major, GPA });
+			cout << count << ": deleted: " << ID << " , " << FN << ":" << endl;
 			t.traverse();		//	<--POINTER ANALYSIS
 		}
 	}
-
+	//t.traverse();
 	//HAVE FUNCTION RETURN INDEX BTREE IF YOU WANT TO MANIPULATE FROM MAIN, maybe on insert if it was empty, check efficiency
 	//location_in_BTree<student, int, &student::ID, string, &student::firstName> test = t.search(1026);
 	//cout << test.node << endl;
 	//cout << test.index << endl;
+	cout << endl << "finished removals, tree is empty" << endl;
+	t.remove({1026, "Philip", "Gibson", "6/5/2001", "Biology", 2.627});	//TODO: look into "truncation double to float" warning
+	cout << "tried to remove Philip Giboson (1026)" << endl;
+
+
 	
-	//t.remove({1026, "Philip", "Gibson", "6/5/2001", "Biology", 2.627});
-	//cout << "removed Philip Giboson (1026)" << endl;
-//	t.traverse();
-
-	
 
 
-#if 0
-	t.insert({ 3, "Steve" });
-	//i.insert({ 3, "Steve" });
-	cout << 3 << endl;
-	t.insert({ 7, "Phil" });
-	//i.insert({ 7, "Phil" });
-	cout << 7 << endl;
-	t.insert({ 10, "Zack" });
-	cout << 10 << endl;
-	t.insert({ 11, "Rick" });
-	cout << 11 << endl;
-	t.insert({ 13, "Mike" });
-	cout << 13 << endl;
-	t.insert({ 14, "Todd" });
-	cout << 14 << endl;
-	t.insert({ 15, "Will" });
-	cout << 15 << endl;
-	t.insert({ 18, "Jason" });
-	cout << 18 << endl;
-	t.insert({ 16, "Kevin" });
-	cout << 16 << endl;
-	t.insert({ 19, "Bill" });
-	cout << 19 << endl;
-	t.insert({ 24, "Anthony" });
-	cout << 24 << endl;
-	t.insert({ 25, "Kate" });
-	cout << 25 << endl;
-	t.insert({ 26, "Joe" });
-	cout << 26 << endl;
-	t.insert({ 21, "Alex" });
-	cout << 21 << endl;
-	t.insert({ 4, "Jen" });
-	cout << 4 << endl;
-	t.insert({ 5, "Matt" });
-	cout << 5 << endl;
-	t.insert({ 20, "Danny" });
-	cout << 20 << endl;
-	t.insert({ 22, "Jack" });
-	cout << 22 << endl;
-	t.insert({ 2, "Gill" });
-	cout << 2 << endl;
-	t.insert({ 17, "Evan" });
-	cout << 17 << endl;
-	t.insert({ 12, "Ian" });
-	cout << 12 << endl;
-	t.insert({ 6, "Chris" });
-	cout << 6 << endl;
 
-	t.insert({ 2, "Gill" });
-	cout << 2 << endl;
-	t.insert({ 4, "Jen" });
-	cout << 4 << endl;
-	t.insert({ 3, "Steve" });
-	cout << 3 << endl;
-	t.insert({ 5, "Matt" });
-	cout << 5 << endl;
-	t.insert({ 6, "Chris" });
-	cout << 6 << endl;
-	t.insert({ 7, "Phil" });
-	cout << 7 << endl;
-	t.insert({ 10, "Zack" });
-	cout << 10 << endl;
-	t.insert({ 11, "Rick" });
-	cout << 11 << endl;
-	t.insert({ 12, "Ian" });
-	cout << 12 << endl;
-	t.insert({ 13, "Mike" });
-	cout << 13 << endl;
-	t.insert({ 14, "Todd" });
-	cout << 14 << endl;
-	t.insert({ 15, "Will" });
-	cout << 15 << endl;
-	t.insert({ 16, "Kevin" });
-	cout << 16 << endl;
-	t.insert({ 17, "Evan" });
-	cout << 17 << endl;
-	t.insert({ 18, "Jason" });
-	cout << 18 << endl;
-	t.insert({ 19, "Bill" });
-	cout << 19 << endl;
-	t.insert({ 20, "Danny" });
-	cout << 20 << endl;
-	t.insert({ 21, "Alex" });
-	cout << 21 << endl;
-	t.insert({ 22, "Jack" });
-	cout << 22 << endl;
-	t.insert({ 24, "Anthony" });
-	cout << 24 << endl;
-	t.insert({ 25, "Kate" });
-	cout << 25 << endl;
-	t.insert({ 26, "Joe" });
-	cout << 26 << endl;
-
-
-	cout << "Traversal of tree constructed is\n";
-	t.traverse();
-	//t.sync();
-	cout << endl;
-
-	cout << "Traversal of index tree constructed is\n";
-	//i.traverse();
-	cout << endl;
-
-	t.remove({ 1, "Bob" });
-	cout << "Traversal of tree after removing 1\n";
-	t.traverse();
-	cout << endl;
-
-	t.remove({ 13, "Mike" });
-	cout << "Traversal of tree after removing 13\n";
-	t.traverse();
-	cout << endl;
-
-	t.remove({ 7, "Phil" });
-	cout << "Traversal of tree after removing 7\n";
-	t.traverse();
-	cout << endl;
-
-	t.remove({ 4, "Jen" });
-	cout << "Traversal of tree after removing 4\n";
-	t.traverse();
-	cout << endl;
-
-	t.remove({ 2, "Gill" });
-	cout << "Traversal of tree after removing 2\n";
-	t.traverse();
-	cout << endl;
-
-	t.remove({ 16, "Kevin" });
-	cout << "Traversal of tree after removing 16\n";
-	t.traverse();
-	cout << endl;
-#endif
 
 	system("pause");
 	return 0;
